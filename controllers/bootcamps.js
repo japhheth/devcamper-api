@@ -7,8 +7,67 @@ const geocoder = require("../utils/geocoder");
 // @access Public
 
 exports.getBootcamps = asyncHandler(async (req, res, next) => {
-  const bootcamps = await BootcampModel.find();
+  let query;
+
+  let requestRequery = { ...req.query };
+
+  let filteredField = ["select", "sortBy", "page", "limit"];
+
+  filteredField.forEach((field) => delete requestRequery[field]);
+
+  // Stringify the request query params
+  let queryString = JSON.stringify(requestRequery);
+
+  //Add the $ sign to the query if it matches mongoose query options lt|lte|gt|gte|in
+  queryString = queryString.replace(
+    /\b(gt|gte|lt|lte|in)\b/g,
+    (match) => `$${match}`
+  );
+
+  query = BootcampModel.find(JSON.parse(queryString));
+
+  //Select a few defined
+  if (req.query.select) {
+    let selectedFields = req.query.select.split(",").join(" ");
+    query = query.select(selectedFields);
+  }
+
+  // Sort
+  if (req.query.sortBy) {
+    let orderBy = req.query.sortBy.split(",").join(" ");
+    query = query.sort(orderBy);
+  } else {
+    query = query.sort("-createdAt");
+  }
+
+  // Pagination
+  const page = parseInt(req.query.page, 10) || 1;
+  const limit = parseInt(req.query.limit, 10) || 10;
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const total = await BootcampModel.countDocuments();
+  const pagination = {};
+
+  query = query.skip(startIndex).limit(limit);
+
+  const bootcamps = await query;
+
+  if (endIndex < total) {
+    pagination.next = {
+      page: page + 1,
+      limit,
+    };
+  }
+
+  if (startIndex > 0) {
+    pagination.prev = {
+      page: page - 1,
+      limit,
+    };
+  }
+
   res.status(200).json({
+    pagination,
     status: true,
     data: bootcamps,
     count: bootcamps.length,
