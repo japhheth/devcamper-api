@@ -10,6 +10,7 @@ dotenv.config();
 
 // Load Routes
 const bootcamps = require("./router/bootcamps");
+const courses = require("./router/courses");
 
 //connect database
 connectDB();
@@ -23,6 +24,7 @@ if (process.env.NODE_ENV === "development") app.use(morgan("combined"));
 
 // Mount routes
 app.use("/api/v1/bootcamps", bootcamps);
+app.use("/api/v1/courses", courses);
 
 // Error handler middleware
 app.use(errorHandler);
